@@ -19,7 +19,7 @@ Coordinate coordServ = {-19.9227,-43.9451};
  * Prints the server-client menu options.
  * The menu displays the available options for the server-client interaction.
  */
-void printServerClient() {
+void printServerMenu() {
   printf("-----------------------------------\n");
   printf("| $ Corrida disponível            |\n");
   printf("| $ 0 - Recusar                   |\n");
@@ -72,8 +72,7 @@ int numPlaces (int n) {
  * @return The distance between the two points in kilometers.
  */
 double haversine(double lat1, double lon1, double lat2, double lon2) {
-  // distance between latitudes
-  // and longitudes
+  // distance
   double dLat = (lat2 - lat1) * M_PI / 180.0;
   double dLon = (lon2 - lon1) * M_PI / 180.0;
 
@@ -81,7 +80,7 @@ double haversine(double lat1, double lon1, double lat2, double lon2) {
   lat1 = (lat1) * M_PI / 180.0;
   lat2 = (lat2) * M_PI / 180.0;
 
-  // apply formulae
+  // apply formula
   double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
   double rad = 6371;
   double c = 2 * asin(sqrt(a));
@@ -99,39 +98,34 @@ int handleTCPClient(int clientSocket) {
   Coordinate clientCoordinates;
 
   // Receive message from client
-  char message[MESSAGE_SIZE];
+  char message[MESSAGE_LEN];
   ssize_t numBytesReceived = recv(clientSocket, message, sizeof(message), 0);
   sscanf(message, "(%lf, %lf)", &clientCoordinates.latitude, &clientCoordinates.longitude);
   if (numBytesReceived < 0) {
     exitWithSystemMessage("recv() failed");
   }
 
-  
-  int acceptRide = 0;
-  printServerClient();
-  scanf("%d", &acceptRide);
-  if(acceptRide == 0) {
-    ssize_t numBytesSent = send(clientSocket, "NO_DRIVER_FOUND", sizeof("NO_DRIVER_FOUND"), 0);
-        
-    if (numBytesSent < 0)
-      exitWithSystemMessage("send() failed");
-  } else {
+  int wasRideAccepted = 0;
+  printServerMenu();
+  scanf("%d", &wasRideAccepted);
+
+  if(wasRideAccepted != 0) {
     int dist = round(haversine(clientCoordinates.latitude, clientCoordinates.longitude, coordServ.latitude, coordServ.longitude) * 1000);
     
     // Send distance updates to client until driver arrives
-    while (1) { // 0 indicates end of stream
+    while (1) {
       char distanceMessage[numPlaces(dist) + 1];
       sprintf(distanceMessage, "%d", dist);
 
       // Send message to client
       ssize_t numBytesSent = -1;
-      if (dist > 0) {
-        numBytesSent = send(clientSocket, distanceMessage, sizeof(distanceMessage), 0);
-      } else {
+      if (dist <= 0) {
         numBytesSent = send(clientSocket, "DRIVER_ARRIVED", sizeof("DRIVER_ARRIVED"), 0);
         driverArrived = 1;
         break;
       }
+      
+      numBytesSent = send(clientSocket, distanceMessage, sizeof(distanceMessage), 0);
 
       if (numBytesSent < 0)
         exitWithSystemMessage("send() failed");
@@ -139,6 +133,11 @@ int handleTCPClient(int clientSocket) {
       dist -= METERS_TRAVELED;
       sleep(SECONDS_WAIT);
     }
+  } else {
+    ssize_t numBytesSent = send(clientSocket, "NO_DRIVER_FOUND", sizeof("NO_DRIVER_FOUND"), 0);
+        
+    if (numBytesSent < 0)
+      exitWithSystemMessage("send() failed");
   }
 
   close(clientSocket); // Close client socket

@@ -23,7 +23,7 @@
 #define IPV6_CODE 1002
 
 // The size of the message.
-#define MESSAGE_SIZE 40
+#define MESSAGE_LEN 42
 
 // Represents a coordinate with latitude and longitude.
 typedef struct {

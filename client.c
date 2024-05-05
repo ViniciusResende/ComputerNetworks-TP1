@@ -15,7 +15,7 @@ Coordinate clientCoordinates = {-19.926639241000448, -43.94068052574999};
  * @param hasAdditionalInfo A flag indicating whether there ia an additional message (1) or not (0).
  * @param additionalInfo The additional message to be printed.
  */
-void printClientMenu(int hasAdditionalInfo, char *additionalInfo) {
+void printMenu(int hasAdditionalInfo, char *additionalInfo) {
   printf("-------------------------------------\n");
   hasAdditionalInfo ? 
     (printf("| $ %s|\n", additionalInfo)) 
@@ -33,21 +33,21 @@ void printClientMenu(int hasAdditionalInfo, char *additionalInfo) {
  * It sends the client's coordinates to the server and receives messages from the server.
  * The function continues to run until the user chooses to end the program or the driver arrives.
  *
- * @param ipType The IP address type (IPv4 or IPv6).
+ * @param ipFamily The IP address type (IPv4 or IPv6).
  * @param servPort The server port number.
- * @param ipAddress The server IP address.
+ * @param address The server IP address.
  */
-void handleTCPServer(int ipType, int servPort, char *ipAddress) {
-  int endsProgram = -1;
+void handleTCPServer(int ipFamily, int servPort, char *address) {
+  int userOption = -1;
   int additionalInfo = 0;
-  while(endsProgram != 0) {
-    printClientMenu(additionalInfo, "Não foi encontrado um motorista.");
-    scanf("%d", &endsProgram);
+  while(userOption != 0) {
+    printMenu(additionalInfo, "Não foi encontrado um motorista.");
+    scanf("%d", &userOption);
 
-    if(endsProgram == 0) break;
+    if(userOption == 0) break;
 
     // Create a reliable, stream socket using TCP
-    int sock = socket((ipType == IPV4_CODE) ? (AF_INET) : (AF_INET6), SOCK_STREAM, IPPROTO_TCP);
+    int sock = socket((ipFamily == IPV4_CODE) ? (AF_INET) : (AF_INET6), SOCK_STREAM, IPPROTO_TCP);
     if(sock == -1) 
       exitWithSystemMessage("socket() failed");
 
@@ -56,10 +56,10 @@ void handleTCPServer(int ipType, int servPort, char *ipAddress) {
     socklen_t serverAddressLen;
     void* addrPtr;
 
-    buildServerAddress(ipType, servPort, &serverAddress, &serverAddressLen, &addrPtr);
+    buildServerAddress(ipFamily, servPort, &serverAddress, &serverAddressLen, &addrPtr);
 
     // Converts the string representation of the server’s address into a 32-bit binary representation
-    int returnValue = inet_pton((ipType == IPV4_CODE) ? (AF_INET) : (AF_INET6), ipAddress, addrPtr); 
+    int returnValue = inet_pton((ipFamily == IPV4_CODE) ? (AF_INET) : (AF_INET6), address, addrPtr); 
     if(returnValue == 0)
       exitWithUserMessage("inet_pton() failed", "invalid address string");
     else if(returnValue < 0)
@@ -69,7 +69,7 @@ void handleTCPServer(int ipType, int servPort, char *ipAddress) {
     if(connect(sock, (struct sockaddr *) &serverAddress, serverAddressLen) == -1)
       exitWithSystemMessage("connect() failed");
 
-    char message[MESSAGE_SIZE]; 
+    char message[MESSAGE_LEN]; 
     sprintf(message, "(%lf, %lf)", clientCoordinates.latitude, clientCoordinates.longitude);
 
     ssize_t numBytes = send(sock, message, sizeof(message), 0);
@@ -80,7 +80,7 @@ void handleTCPServer(int ipType, int servPort, char *ipAddress) {
 
     int printLine = 1;
 
-    char buffer[MESSAGE_SIZE];
+    char buffer[MESSAGE_LEN];
     while(1) {
       memset(buffer, 0, sizeof(buffer));
       numBytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
@@ -99,7 +99,7 @@ void handleTCPServer(int ipType, int servPort, char *ipAddress) {
         printf("| $ <Encerrar programa >          |\n");
         printf("-----------------------------------\n");
 
-        endsProgram = 0;
+        userOption = 0;
         break;
       } else {
         if(printLine)  {
@@ -128,11 +128,11 @@ int main(int argc, char *argv[]) {
   if(argc != 4)
     exitWithSystemMessage("Parameters: <IP_type> <IP_address)> <port>\n");
 
-  int ipType = (strcmp(argv[1], "ipv4") == 0) ? IPV4_CODE : IPV6_CODE;
-  char *ipAddress = argv[2];
+  int ipFamily = (strcmp(argv[1], "ipv4") == 0) ? IPV4_CODE : IPV6_CODE;
+  char *address = argv[2];
   int servPort = atoi(argv[3]);
 
-  handleTCPServer(ipType, servPort, ipAddress);
+  handleTCPServer(ipFamily, servPort, address);
   
   exit(0);
   return 0;
