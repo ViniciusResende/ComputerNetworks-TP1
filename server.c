@@ -99,6 +99,7 @@ int handleTCPClient(int clientSocket) {
 
   // Receive message from client
   char message[MESSAGE_LEN];
+  // Receive TCP message from client with its coordinates
   ssize_t numBytesReceived = recv(clientSocket, message, sizeof(message), 0);
   sscanf(message, "(%lf, %lf)", &clientCoordinates.latitude, &clientCoordinates.longitude);
   if (numBytesReceived < 0) {
@@ -120,11 +121,13 @@ int handleTCPClient(int clientSocket) {
       // Send message to client
       ssize_t numBytesSent = -1;
       if (dist <= 0) {
+        // Sends TCP message to client informing that the driver has arrived
         numBytesSent = send(clientSocket, "DRIVER_ARRIVED", sizeof("DRIVER_ARRIVED"), 0);
         driverArrived = 1;
         break;
       }
       
+      // Sends TCP message to client with the distance to the driver
       numBytesSent = send(clientSocket, distanceMessage, sizeof(distanceMessage), 0);
 
       if (numBytesSent < 0)
@@ -134,6 +137,7 @@ int handleTCPClient(int clientSocket) {
       sleep(SECONDS_WAIT);
     }
   } else {
+    // Sends TCP message to client informing that no driver was found
     ssize_t numBytesSent = send(clientSocket, "NO_DRIVER_FOUND", sizeof("NO_DRIVER_FOUND"), 0);
         
     if (numBytesSent < 0)
@@ -194,6 +198,7 @@ int main (int argc, char *argv[]) {
     socklen_t clientAddressLen = sizeof(clientAddress); // Set length of client address structure
 
     // Wait for a client to connect
+    // Accept a connection on a socket
     int clientSock = accept(serverSock, (struct sockaddr *) &clientAddress, &clientAddressLen);
     if (clientSock < 0) {
       exitWithSystemMessage("accept() failed");

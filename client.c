@@ -72,6 +72,7 @@ void handleTCPServer(int ipFamily, int servPort, char *address) {
     char message[MESSAGE_LEN]; 
     sprintf(message, "(%lf, %lf)", clientCoordinates.latitude, clientCoordinates.longitude);
 
+    // Send a TCP message with the coordinates of the client
     ssize_t numBytes = send(sock, message, sizeof(message), 0);
     if (numBytes < 0)
       exitWithSystemMessage("send() failed");
@@ -83,6 +84,7 @@ void handleTCPServer(int ipFamily, int servPort, char *address) {
     char buffer[MESSAGE_LEN];
     while(1) {
       memset(buffer, 0, sizeof(buffer));
+      // Receive a response from the server
       numBytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
       if(numBytes < 0)
         exitWithSystemMessage("recv() failed");
