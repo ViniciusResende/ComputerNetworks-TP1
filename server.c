@@ -101,10 +101,10 @@ int handleTCPClient(int clientSocket) {
   char message[MESSAGE_LEN];
   // Receive TCP message from client with its coordinates
   ssize_t numBytesReceived = recv(clientSocket, message, sizeof(message), 0);
-  sscanf(message, "(%lf, %lf)", &clientCoordinates.latitude, &clientCoordinates.longitude);
   if (numBytesReceived < 0) {
     exitWithSystemMessage("recv() failed");
   }
+  sscanf(message, "(%lf, %lf)", &clientCoordinates.latitude, &clientCoordinates.longitude);
 
   int wasRideAccepted = 0;
   printServerMenu();
@@ -114,21 +114,12 @@ int handleTCPClient(int clientSocket) {
     int dist = round(haversine(clientCoordinates.latitude, clientCoordinates.longitude, coordServ.latitude, coordServ.longitude) * 1000);
     
     // Send distance updates to client until driver arrives
-    while (1) {
-      char distanceMessage[numPlaces(dist) + 1];
-      sprintf(distanceMessage, "%d", dist);
-
-      // Send message to client
-      ssize_t numBytesSent = -1;
-      if (dist <= 0) {
-        // Sends TCP message to client informing that the driver has arrived
-        numBytesSent = send(clientSocket, "DRIVER_ARRIVED", sizeof("DRIVER_ARRIVED"), 0);
-        driverArrived = 1;
-        break;
-      }
+    while (dist > 0) {
+      char distMessage[numPlaces(dist) + 1];
+      sprintf(distMessage, "%d", dist);
       
       // Sends TCP message to client with the distance to the driver
-      numBytesSent = send(clientSocket, distanceMessage, sizeof(distanceMessage), 0);
+      ssize_t numBytesSent = send(clientSocket, distMessage, sizeof(distMessage), 0);
 
       if (numBytesSent < 0)
         exitWithSystemMessage("send() failed");
@@ -136,9 +127,15 @@ int handleTCPClient(int clientSocket) {
       dist -= METERS_TRAVELED;
       sleep(SECONDS_WAIT);
     }
+
+    // Sends TCP message to client informing that the driver has arrived
+    ssize_t numBytesSent = send(clientSocket, "DRIVER_ARRIVED", sizeof("DRIVER_ARRIVED"), 0);
+    if (numBytesSent < 0)
+      exitWithSystemMessage("send() failed");
+    driverArrived = 1;
   } else {
     // Sends TCP message to client informing that no driver was found
-    ssize_t numBytesSent = send(clientSocket, "NO_DRIVER_FOUND", sizeof("NO_DRIVER_FOUND"), 0);
+    ssize_t numBytesSent = send(clientSocket, "NO_DRIVER", sizeof("NO_DRIVER"), 0);
         
     if (numBytesSent < 0)
       exitWithSystemMessage("send() failed");
@@ -158,9 +155,8 @@ int handleTCPClient(int clientSocket) {
  * @return Returns 0 on successful execution.
  */
 int main (int argc, char *argv[]) {
-  if (argc != 3) {
-    exitWithUserMessage("Parameter(s)", "<Server Port>");
-  }
+  if (argc != 3) 
+    exitWithSystemMessage("Parameters: <IP_type> <port>\n");
 
   int ipType = (strcmp(argv[1], "ipv4") == 0) ? IPV4_CODE : IPV6_CODE;
   in_port_t servPort = atoi(argv[2]); // First arg: local port
@@ -191,10 +187,7 @@ int main (int argc, char *argv[]) {
 
   printServerWaiting(0);
   while (1) {
-    union {
-      struct sockaddr_in6 IPV6; // IPv6 address
-      struct sockaddr_in IPV4; // IPv4 address
-    } clientAddress;
+    ServerAddress clientAddress;
     socklen_t clientAddressLen = sizeof(clientAddress); // Set length of client address structure
 
     // Wait for a client to connect

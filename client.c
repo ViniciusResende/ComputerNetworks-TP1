@@ -85,15 +85,13 @@ void handleTCPServer(int ipFamily, int servPort, char *address) {
     while(1) {
       memset(buffer, 0, sizeof(buffer));
       // Receive a response from the server
-      numBytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
+      numBytes = recv(sock, buffer, sizeof(buffer), 0);
       if(numBytes < 0)
         exitWithSystemMessage("recv() failed");
       else if(numBytes == 0)
         exitWithUserMessage("recv()", "connection closed prematurely");
-        
-      buffer[numBytes] = '\0';
 
-      if(strcmp(buffer, "NO_DRIVER_FOUND") == 0) {
+      if(strcmp(buffer, "NO_DRIVER") == 0) {
         additionalInfo = 1;
         break;
       } else if (strcmp(buffer, "DRIVER_ARRIVED") == 0) {
@@ -128,7 +126,7 @@ void handleTCPServer(int ipFamily, int servPort, char *address) {
  */
 int main(int argc, char *argv[]) {
   if(argc != 4)
-    exitWithSystemMessage("Parameters: <IP_type> <IP_address)> <port>\n");
+    exitWithSystemMessage("Parameters: <IP_type> <IP_address> <port>\n");
 
   int ipFamily = (strcmp(argv[1], "ipv4") == 0) ? IPV4_CODE : IPV6_CODE;
   char *address = argv[2];
